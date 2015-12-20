@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 )
 
@@ -37,9 +38,11 @@ const (
 	SHELL_EXIT
 )
 
-var PROMPT = map[string]string{
-	"scissors": string([]rune{'\u2702', ' '}),
-	"gopher":   "ʕ◔ϖ◔ʔ 三 ",
+const LineBufSize = 10000
+
+var PROMPT = map[string][]byte{
+	"simple": []byte("> "),
+	"gopher": []byte("ʕ◔ϖ◔ʔ 三 "),
 }
 
 func launch(args []string) ExitStatus {
@@ -76,17 +79,21 @@ func execute(args []string) ShellStatus {
 
 func loop() {
 	reader := bufio.NewReader(os.Stdin)
-	var status ShellStatus
-	for status == SHELL_RUNNING {
-		fmt.Printf("%v", PROMPT["gopher"])
-		line, err := reader.ReadString('\n')
-		switch {
-		case line != "":
-			args := strings.Fields(line)
-			status = execute(args)
-		case err != nil:
-			fmt.Println(err)
+	for {
+		size := strconv.Itoa(reader.Buffered())
+		prompt := append([]byte(size), PROMPT["gopher"]...)
+		os.Stdout.Write(prompt)
+		line, _, err := reader.ReadLine()
+		if err != nil {
+			fmt.Println("yosh:", err)
+			continue
 		}
+		if len(line) == 0 {
+			os.Stdout.Write([]byte("hoge"))
+			continue
+		}
+		args := strings.Fields(string(line))
+		_ = execute(args)
 	}
 }
 
